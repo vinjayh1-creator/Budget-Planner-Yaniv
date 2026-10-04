@@ -1039,8 +1039,6 @@ nav button.active{background:var(--soft);color:var(--primary);}
 
 <style id="dashboard-account-font-equal">
 /* ABN Amro en Revolut in het dashboard exact dezelfde tekstgewicht */
-.dashboard-abn-summary .account-left > div:last-child{font-weight:400;}
-.dashboard-abn-summary .account-left > div:last-child strong{font-weight:400;}
 .dashboard-revolut-summary .account-left > div:last-child{font-weight:400;}
 .dashboard-revolut-summary .account-left > div:last-child strong{font-weight:400;}
 </style>
@@ -1510,72 +1508,53 @@ const dashboardPokemonInvested=dashboardCryptoEntries.filter(e=>(e.assetType||"c
 const dashboardPokemonCashouts=dashboardCryptoEntries.filter(e=>(e.assetType||"crypto")==="pokemon"&&e.type==="out").reduce((s,e)=>s+Number(e.amount||0),0);
 const dashboardPokemonResult=dashboardPokemonCashouts-dashboardPokemonInvested;
 const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonCashouts);
-const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+// Dashboardtransacties: gewone transacties + DealPlugNL-verkoop/kosten, zodat
+// een DealPlugNL-verkoop ook als recente financiële beweging zichtbaar is.
+const dashboardDealplugTransactions=dealplugMonthEntries.map(e=>({
+  id:`dp_${e.id}`,
+  description:e.description||"DealPlugNL",
+  amount:Number(e.amount||0),
+  date:e.date,
+  category:e.dealplugSale?"DealPlugNL verkoop":(e.category||"DealPlugNL"),
+  accountId:"acc4",
+  kind:e.kind==="income"?"income":"expense",
+  dashboardSource:"DealPlugNL"
+}));
+const dashboardAllRecent=[...ts,...dashboardDealplugTransactions];
+const recent=dashboardAllRecent.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
 
 // Laatste transacties voor de rekeningtegel op het dashboard.
 // ABN toont na uitklappen de 3 meest recente transacties.
-// Revolut toont na uitklappen de 3 subrekeningen en daaronder de 3 meest recente Revolut-transacties.
+// Revolut toont na uitklappen de 3 subrekeningen en daaronder de 3 meest recente
+// bewegingen, inclusief normale transacties, Revolut-mutaties en DealPlugNL.
 const abnRecentTransactions=[...ts]
   .filter(t=>t.accountId==="acc1"||t.accountId==="acc2")
   .sort((a,b)=>new Date(b.date)-new Date(a.date))
   .slice(0,3);
-// Revolut-activiteit: neem ALLE mutaties mee die invloed hebben op Revolut,
-// inclusief DealPlugNL-verkopen. Een DealPlugNL-verkoop staat namelijk in
-// data.dealplug.entries en niet als gewone data.transactions-transactie.
-const revolutTransactionHistory=[
-  ...((Array.isArray(data.transactions)?data.transactions:[])
-    .filter(t=>
-      t.accountId==="acc4" ||
-      t.kind==="revolutAdjustment" ||
-      t.kind==="revolutTransfer" ||
-      t.fromTarget ||
-      t.toTarget
-    )),
-  ...((Array.isArray(data.dealplug?.entries)?data.dealplug.entries:[])
-    .filter(e=>e.dealplugSale===true)
-    .map(e=>({
-      id:`dealplug-sale-${e.id}`,
-      description:e.description||"DealPlugNL verkoop",
-      amount:Number(e.amount||0),
-      date:e.date,
-      category:"DealPlugNL verkoop",
-      accountId:"revolut-subaccount",
-      kind:"income",
-      target:"dealplug",
-      dealplugSale:true
-    })))
-];
-const revolutRecentTransactions=revolutTransactionHistory
-  .sort((a,b)=>{
-    const dateDiff=new Date(b.date)-new Date(a.date);
-    if(dateDiff!==0)return dateDiff;
-    return String(b.id||"").localeCompare(String(a.id||""));
-  })
+const revolutDealplugTransactions=dealplugEntries.map(e=>({
+  id:`dp_${e.id}`,
+  description:e.description||"DealPlugNL",
+  amount:Number(e.amount||0),
+  date:e.date,
+  category:e.dealplugSale?"DealPlugNL verkoop":(e.category||"DealPlugNL"),
+  accountId:"acc4",
+  kind:e.kind==="income"?"income":"expense",
+  dashboardSource:"DealPlugNL"
+}));
+const revolutRecentTransactions=[...ts]
+  .filter(t=>t.accountId==="acc4"||t.kind==="revolutAdjustment"||t.kind==="revolutTransfer"||t.fromTarget||t.toTarget)
+  .concat(revolutDealplugTransactions)
+  .sort((a,b)=>new Date(b.date)-new Date(a.date))
   .slice(0,3);
 const compactAccountTransaction=(t)=>{
   const amount=Number(t.amount||0);
   const isIncome=t.kind==="income";
   const isTransfer=t.kind==="transfer"||t.kind==="revolutTransfer";
   const sign=isIncome?"+":isTransfer?"↔":"-";
-  // Bij de rekeningoverzichten: binnengekomen geld groen, uitgegaan geld rood.
-  // Een interne Revolut-overboeking blijft neutraal omdat het totaal van Revolut niet verandert.
-  const cls=isIncome?"positive":isTransfer?"":"negative";
-  const revolutLabels={private:"Privé",dealplug:"DealPlugNL",crypto:"Crypto / Pokémon"};
-  let location="";
-  if(t.kind==="revolutTransfer") {
-    const from=revolutLabels[t.fromTarget]||"Revolut";
-    const to=revolutLabels[t.toTarget]||"Revolut";
-    location=`${from} → ${to}`;
-  } else if(t.kind==="revolutAdjustment") {
-    location=revolutLabels[t.target]||"Revolut";
-  } else if(t.dealplugSale) {
-    location="DealPlugNL";
-  } else if(t.accountId==="acc4" || t.accountId==="revolut-subaccount") {
-    location="Privé";
-  }
-  const metaDate=new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"});
-  const meta=location?`${metaDate} · ${location}`:metaDate;
-  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${esc(meta)}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
+  const cls=isIncome?"positive":isTransfer?"": "negative";
+  const source=t.dashboardSource||({private:"Privé",dealplug:"DealPlugNL",crypto:"Crypto / Pokémon"}[t.target]||"");
+  const sourceText=source?` · ${esc(source)}`:"";
+  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"})}${sourceText}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
 };
 
 const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
@@ -1664,7 +1643,7 @@ ${(()=>{
 </div>
 <div class="recent-overview-grid">
   <div>
-    ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>transactionRow(t,false)).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
+    ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>t.dashboardSource?`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${new Date(t.date).toLocaleDateString("nl-NL")}</td><td class="${t.kind==="income"?"positive":"negative"}">${t.kind==="income"?"+":"-"}${euro(t.amount)}</td></tr>`:transactionRow(t,false)).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
   </div>
   <div class="category-overview">
     <div class="category-overview-title">Uitgaven per categorie</div>
@@ -2869,8 +2848,7 @@ init();
 </body>
 
 <style id="dashboard-account-details">
-.dashboard-abn-details,.dashboard-revolut-details{width:100%;margin:0;padding:0;box-sizing:border-box;}
-.dashboard-abn-summary,.dashboard-revolut-summary{width:100%;box-sizing:border-box;margin:0;padding:8px 9px;}
+.dashboard-abn-details,.dashboard-revolut-details{width:100%;}
 .dashboard-abn-summary,.dashboard-revolut-summary{list-style:none;cursor:pointer;}
 .dashboard-abn-summary::-webkit-details-marker,.dashboard-revolut-summary::-webkit-details-marker{display:none;}
 .dashboard-abn-summary::after,.dashboard-revolut-summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);margin-left:8px;transition:transform .15s ease;}
@@ -3298,4 +3276,9 @@ init();
   #recurring .field input,
   #recurring .field select{padding:7px 8px;min-height:33px;}
 }
+</style>
+
+<style id="dashboard-account-transaction-colors">
+.dashboard-account-tx-row .positive{color:var(--green)!important;}
+.dashboard-account-tx-row .negative{color:var(--red)!important;}
 </style>
