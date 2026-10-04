@@ -1619,6 +1619,16 @@ ${(()=>{
       <div class="small">Wekelijks loon</div>
       <div class="positive" style="font-size:18px;font-weight:500;margin-top:4px">${(()=>{if(!data.weeklySalary?.enabled)return "Niet ingesteld"; return protectedEuro(Number(data.weeklySalary.amount||0))})()}</div>
       <div class="small" style="margin-top:3px">Iedere woensdag</div>
+      <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)">
+        <div class="small">Totaal loon deze maand</div>
+        <div class="positive" style="font-size:16px;font-weight:600;margin-top:3px">${(()=>{
+          if(!data.weeklySalary?.enabled)return "—";
+          const salaryTotal=data.transactions
+            .filter(t=>monthKey(t.date)===monthKey(currentMonth) && t.kind==="income" && t.category==="Salaris" && (t.description||"")===(data.weeklySalary.description||"Wekelijks loon"))
+            .reduce((sum,t)=>sum+Number(t.amount||0),0);
+          return protectedEuro(salaryTotal);
+        })()}</div>
+      </div>
     </div>
   </div>
   <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:11px">
