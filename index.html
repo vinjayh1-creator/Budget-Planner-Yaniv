@@ -1517,9 +1517,38 @@ const abnRecentTransactions=[...ts]
   .filter(t=>t.accountId==="acc1"||t.accountId==="acc2")
   .sort((a,b)=>new Date(b.date)-new Date(a.date))
   .slice(0,3);
-const revolutRecentTransactions=[...ts]
-  .filter(t=>t.accountId==="acc4"||t.kind==="revolutAdjustment"||t.kind==="revolutTransfer"||t.fromTarget||t.toTarget)
-  .sort((a,b)=>new Date(b.date)-new Date(a.date))
+// Revolut-activiteit: neem ALLE mutaties mee die invloed hebben op Revolut,
+// inclusief DealPlugNL-verkopen. Een DealPlugNL-verkoop staat namelijk in
+// data.dealplug.entries en niet als gewone data.transactions-transactie.
+const revolutTransactionHistory=[
+  ...((Array.isArray(data.transactions)?data.transactions:[])
+    .filter(t=>
+      t.accountId==="acc4" ||
+      t.kind==="revolutAdjustment" ||
+      t.kind==="revolutTransfer" ||
+      t.fromTarget ||
+      t.toTarget
+    )),
+  ...((Array.isArray(data.dealplug?.entries)?data.dealplug.entries:[])
+    .filter(e=>e.dealplugSale===true)
+    .map(e=>({
+      id:`dealplug-sale-${e.id}`,
+      description:e.description||"DealPlugNL verkoop",
+      amount:Number(e.amount||0),
+      date:e.date,
+      category:"DealPlugNL verkoop",
+      accountId:"revolut-subaccount",
+      kind:"income",
+      target:"dealplug",
+      dealplugSale:true
+    })))
+];
+const revolutRecentTransactions=revolutTransactionHistory
+  .sort((a,b)=>{
+    const dateDiff=new Date(b.date)-new Date(a.date);
+    if(dateDiff!==0)return dateDiff;
+    return String(b.id||"").localeCompare(String(a.id||""));
+  })
   .slice(0,3);
 const compactAccountTransaction=(t)=>{
   const amount=Number(t.amount||0);
