@@ -1557,7 +1557,9 @@ const compactAccountTransaction=(t)=>{
   const isIncome=t.kind==="income";
   const isTransfer=t.kind==="transfer"||t.kind==="revolutTransfer";
   const sign=isIncome?"+":isTransfer?"↔":"-";
-  const cls=isIncome?"positive":isTransfer?"": "negative";
+  // Bij de rekeningoverzichten: binnengekomen geld groen, uitgegaan geld rood.
+  // Een interne Revolut-overboeking blijft neutraal omdat het totaal van Revolut niet verandert.
+  const cls=isIncome?"positive":isTransfer?"":"negative";
   const revolutLabels={private:"Privé",dealplug:"DealPlugNL",crypto:"Crypto / Pokémon"};
   let location="";
   if(t.kind==="revolutTransfer") {
@@ -2867,7 +2869,8 @@ init();
 </body>
 
 <style id="dashboard-account-details">
-.dashboard-abn-details,.dashboard-revolut-details{width:100%;}
+.dashboard-abn-details,.dashboard-revolut-details{width:100%;margin:0;padding:0;box-sizing:border-box;}
+.dashboard-abn-summary,.dashboard-revolut-summary{width:100%;box-sizing:border-box;margin:0;padding:8px 9px;}
 .dashboard-abn-summary,.dashboard-revolut-summary{list-style:none;cursor:pointer;}
 .dashboard-abn-summary::-webkit-details-marker,.dashboard-revolut-summary::-webkit-details-marker{display:none;}
 .dashboard-abn-summary::after,.dashboard-revolut-summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);margin-left:8px;transition:transform .15s ease;}
