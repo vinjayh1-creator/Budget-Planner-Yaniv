@@ -1511,8 +1511,8 @@ const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonC
 const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
 
 // Laatste transacties voor de rekeningtegel op het dashboard.
-// ABN toont de 3 meest recente transacties; Revolut toont na het uitklappen
-// van de 3 subrekeningen slechts 1 meest recente Revolut-transactie.
+// ABN toont na uitklappen de 3 meest recente transacties.
+// Revolut toont na uitklappen de 3 subrekeningen en daaronder de 3 meest recente Revolut-transacties.
 const abnRecentTransactions=[...ts]
   .filter(t=>t.accountId==="acc1"||t.accountId==="acc2")
   .sort((a,b)=>new Date(b.date)-new Date(a.date))
@@ -1520,7 +1520,7 @@ const abnRecentTransactions=[...ts]
 const revolutRecentTransactions=[...ts]
   .filter(t=>t.accountId==="acc4"||t.kind==="revolutAdjustment"||t.kind==="revolutTransfer"||t.fromTarget||t.toTarget)
   .sort((a,b)=>new Date(b.date)-new Date(a.date))
-  .slice(0,1);
+  .slice(0,3);
 const compactAccountTransaction=(t)=>{
   const amount=Number(t.amount||0);
   const isIncome=t.kind==="income";
@@ -1543,10 +1543,18 @@ $("dashboard").innerHTML=`
 </div>
 <div class="section-grid">
 <div class="card"><div class="section-title">Rekeningen</div><div class="small" style="margin-bottom:9px">Stand ${dashboardSnapshotLabel}</div><div class="account-list">
-<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="landmark"></i></div><div>ABN Amro</div></div><div class="amount">${protectedEuro(dashboardAbnBalance)}</div></div>
-<div class="dashboard-account-transactions">
-  ${abnRecentTransactions.length?abnRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen ABN-transacties</div>`}
+<details class="dashboard-abn-details">
+<summary class="account dashboard-abn-summary">
+<div class="account-left"><div class="account-icon"><i data-lucide="landmark"></i></div><div><strong>ABN Amro</strong><div class="small">Klik voor laatste transacties</div></div></div>
+<div class="amount">${protectedEuro(dashboardAbnBalance)}</div>
+</summary>
+<div class="dashboard-abn-details-inner">
+  <div class="small dashboard-subrow-title">Laatste 3 transacties</div>
+  <div class="dashboard-account-transactions">
+    ${abnRecentTransactions.length?abnRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen ABN-transacties</div>`}
+  </div>
 </div>
+</details>
 <details class="dashboard-revolut-details">
 <summary class="account dashboard-revolut-summary">
 <div class="account-left"><div class="account-icon"><i data-lucide="wallet"></i></div><div><strong>Revolut</strong><div class="small">Klik om rekeningen te bekijken</div></div></div>
@@ -1557,8 +1565,8 @@ $("dashboard").innerHTML=`
   <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(displayedBalances.dealplug)}</strong></div>
   <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(displayedBalances.crypto)}</strong></div>
   <div class="dashboard-account-transactions revolut-last-transaction">
-    <div class="small dashboard-subrow-title">Laatste transactie</div>
-    ${revolutRecentTransactions.length?compactAccountTransaction(revolutRecentTransactions[0]):`<div class="small">Nog geen Revolut-transacties</div>`}
+    <div class="small dashboard-subrow-title">Laatste 3 transacties</div>
+    ${revolutRecentTransactions.length?revolutRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen Revolut-transacties</div>`}
   </div>
 </div>
 </details>
@@ -2811,6 +2819,15 @@ render();
 init();
 </script>
 </body>
+
+<style id="dashboard-account-details">
+.dashboard-abn-details,.dashboard-revolut-details{width:100%;}
+.dashboard-abn-summary,.dashboard-revolut-summary{list-style:none;cursor:pointer;}
+.dashboard-abn-summary::-webkit-details-marker,.dashboard-revolut-summary::-webkit-details-marker{display:none;}
+.dashboard-abn-summary::after,.dashboard-revolut-summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);margin-left:8px;transition:transform .15s ease;}
+.dashboard-abn-details[open] .dashboard-abn-summary::after,.dashboard-revolut-details[open] .dashboard-revolut-summary::after{transform:rotate(225deg);}
+.dashboard-abn-details-inner,.dashboard-revolut-details-inner{padding-top:3px;}
+</style>
 
 <style id="dashboard-account-transactions">
 .dashboard-account-transactions{margin:5px 0 8px 48px;border-top:1px solid var(--border);padding-top:5px;}
