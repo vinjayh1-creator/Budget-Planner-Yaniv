@@ -1510,6 +1510,26 @@ const dashboardPokemonResult=dashboardPokemonCashouts-dashboardPokemonInvested;
 const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonCashouts);
 const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
 
+// Laatste transacties voor de rekeningtegel op het dashboard.
+// ABN toont de 3 meest recente transacties; Revolut toont na het uitklappen
+// van de 3 subrekeningen slechts 1 meest recente Revolut-transactie.
+const abnRecentTransactions=[...ts]
+  .filter(t=>t.accountId==="acc1"||t.accountId==="acc2")
+  .sort((a,b)=>new Date(b.date)-new Date(a.date))
+  .slice(0,3);
+const revolutRecentTransactions=[...ts]
+  .filter(t=>t.accountId==="acc4"||t.kind==="revolutAdjustment"||t.kind==="revolutTransfer"||t.fromTarget||t.toTarget)
+  .sort((a,b)=>new Date(b.date)-new Date(a.date))
+  .slice(0,1);
+const compactAccountTransaction=(t)=>{
+  const amount=Number(t.amount||0);
+  const isIncome=t.kind==="income";
+  const isTransfer=t.kind==="transfer"||t.kind==="revolutTransfer";
+  const sign=isIncome?"+":isTransfer?"↔":"-";
+  const cls=isIncome?"positive":isTransfer?"": "negative";
+  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"})}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
+};
+
 const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
 $("dashboard").innerHTML=`
 <div class="topbar"><div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
@@ -1524,6 +1544,9 @@ $("dashboard").innerHTML=`
 <div class="section-grid">
 <div class="card"><div class="section-title">Rekeningen</div><div class="small" style="margin-bottom:9px">Stand ${dashboardSnapshotLabel}</div><div class="account-list">
 <div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="landmark"></i></div><div>ABN Amro</div></div><div class="amount">${protectedEuro(dashboardAbnBalance)}</div></div>
+<div class="dashboard-account-transactions">
+  ${abnRecentTransactions.length?abnRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen ABN-transacties</div>`}
+</div>
 <details class="dashboard-revolut-details">
 <summary class="account dashboard-revolut-summary">
 <div class="account-left"><div class="account-icon"><i data-lucide="wallet"></i></div><div><strong>Revolut</strong><div class="small">Klik om rekeningen te bekijken</div></div></div>
@@ -1533,6 +1556,10 @@ $("dashboard").innerHTML=`
   <div class="small dashboard-subrow"><span>Revolut privé</span><strong>${protectedEuro(displayedBalances.privateRevolut)}</strong></div>
   <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(displayedBalances.dealplug)}</strong></div>
   <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(displayedBalances.crypto)}</strong></div>
+  <div class="dashboard-account-transactions revolut-last-transaction">
+    <div class="small dashboard-subrow-title">Laatste transactie</div>
+    ${revolutRecentTransactions.length?compactAccountTransaction(revolutRecentTransactions[0]):`<div class="small">Nog geen Revolut-transacties</div>`}
+  </div>
 </div>
 </details>
 </div>
@@ -2660,7 +2687,13 @@ $("recurring").innerHTML=`<div class="topbar"><div><h1>Terugkerend</h1><div clas
 <div class="card"><div class="section-title">Terugkerende transactie toevoegen</div><form id="recForm"><div class="toggle"><button type="button" data-reckind="expense" class="active">Uitgave</button><button type="button" data-reckind="income">Inkomst</button></div>
 <div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="31" step="1" value="1" required inputmode="numeric"><div class="small">Bijv. 1 voor huur, 5 voor verzekering.</div></div></div>
 <div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form></div>
-<div class="card transactions"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${Number(r.day||1)} · ${esc(r.category)} · ${esc(accountById(r.accountId)?.name||"-")}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" data-rec-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
+<div class="card transactions"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${Number(r.day||1)} · ${esc(r.category)} · ${esc(accountById(r.accountId)?.name||"-")}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" data-rec-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>
+${(()=>{
+  const deductions=(Array.isArray(data.transactions)?data.transactions:[])
+    .filter(t=>t.recurringId && t.kind==="expense")
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  return `<div class="card transactions"><div class="section-title">Afschrijvingen</div><div class="small" style="margin-bottom:12px">Hier zie je alleen vaste kosten die daadwerkelijk zijn verwerkt, op de vaste dag die je hebt ingesteld.</div>${deductions.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px 6px">Datum</th><th style="text-align:left;padding:8px 6px">Omschrijving</th><th style="text-align:left;padding:8px 6px">Rekening</th><th style="text-align:right;padding:8px 6px">Bedrag</th></tr></thead><tbody>${deductions.map(t=>`<tr><td style="padding:9px 6px;border-top:1px solid var(--border)">${new Date(t.date+"T12:00:00").toLocaleDateString("nl-NL")}</td><td style="padding:9px 6px;border-top:1px solid var(--border)">${esc(t.description)}</td><td style="padding:9px 6px;border-top:1px solid var(--border)">${esc(accountById(t.accountId)?.name||"-")}</td><td style="padding:9px 6px;border-top:1px solid var(--border);text-align:right" class="negative">-${euro(t.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen vaste kosten afgeschreven.</div>`}</div>`;
+})()}`;
 $("saveWeeklySalary").onclick=()=>{
   const amount=Number($("weeklySalaryAmount").value);
   const accountId=$("weeklySalaryAccount").value;
@@ -2778,6 +2811,24 @@ render();
 init();
 </script>
 </body>
+
+<style id="dashboard-account-transactions">
+.dashboard-account-transactions{margin:5px 0 8px 48px;border-top:1px solid var(--border);padding-top:5px;}
+.dashboard-account-tx-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.dashboard-account-tx-row:last-child{border-bottom:0;}
+.dashboard-account-tx-row strong{font-weight:600;}
+.dashboard-account-tx-row span{display:block;color:var(--muted);font-size:9px;margin-top:1px;}
+.dashboard-account-tx-row .positive{color:var(--positive)!important;}
+.dashboard-account-tx-row .negative{color:var(--negative)!important;}
+.revolut-last-transaction{margin-left:0;margin-top:8px;padding-top:8px;}
+.dashboard-subrow-title{font-size:10px;font-weight:600;margin-bottom:2px;}
+@media(max-width:700px){
+ .dashboard-account-transactions{margin-left:43px;}
+ .revolut-last-transaction{margin-left:0;}
+ .dashboard-account-tx-row{font-size:10px;padding:5px 0;}
+ .dashboard-account-tx-row span{font-size:8px;}
+}
+</style>
 
 <style id="dashboard-recurring-expanded">
 .dashboard-recurring-summary{overflow:hidden;}
