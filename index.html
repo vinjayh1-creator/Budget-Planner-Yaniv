@@ -989,6 +989,38 @@ html,body,#root,.app{
   border-bottom:1px solid var(--border);
 }
 .dashboard-subrow:last-child{border-bottom:0}
+
+.dashboard-account-transactions{margin-top:4px;}
+.dashboard-account-tx-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0;
+  border-bottom:1px solid var(--border);
+}
+.dashboard-account-tx-row:last-child{border-bottom:0;}
+.dashboard-account-tx-row > div{min-width:0;}
+.dashboard-account-tx-row > div > strong{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.dashboard-account-tx-row > div > span{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+  color:var(--muted);
+}
+.dashboard-account-tx-row > strong{
+  flex:0 0 auto;
+  font-size:11px;
+  font-weight:650;
+  white-space:nowrap;
+}
 </style>
 
 
@@ -1201,6 +1233,15 @@ nav button.active{background:var(--soft);color:var(--primary);}
 #dealplug .dp-mode-toggle{display:flex;gap:6px;flex-wrap:wrap}
 #dealplug .dp-mode-toggle button{flex:0 0 auto;padding:7px 13px;font-size:12px}
 #dealplug #dpSaleFields .small{line-height:1.45}
+</style>
+
+<style id="transaction-date-time-display">
+.transaction-date{display:inline-flex;flex-direction:column;line-height:1.2;}
+.transaction-date small{display:block;font-size:9px;color:var(--muted);font-weight:500;margin-top:2px;}
+#dashboard .recent-overview-grid .table td:nth-child(3){white-space:nowrap;}
+@media(max-width:700px){
+  .transaction-date small{font-size:8px;}
+}
 </style>
 </head>
 <body>
@@ -1460,6 +1501,36 @@ function displayedAccountBalances(month){
   return {abn,privateRevolut,dealplug,crypto,revolut,total:abn+revolut};
 }
 
+function dashboardTransactionTime(t){
+  // Nieuwe transacties krijgen een uid die begint met Date.now() in base36.
+  // Alleen de eerste 8 tekens horen bij de timestamp; de rest is willekeurige
+  // tekst. Door niet de volledige id te parsen voorkomen we een ongeldige datum.
+  const rawId=String(t?.id||"").replace(/^dp_/,'');
+  const timestamp=parseInt(rawId.slice(0,8),36);
+  if(Number.isFinite(timestamp) && timestamp>100000000000) return timestamp;
+
+  // Ook oudere transacties kunnen een expliciete aanmaaktijd bevatten.
+  const explicitTime=t?.createdAt||t?.timestamp||t?.created_at;
+  if(explicitTime!==undefined && explicitTime!==null){
+    const explicitParsed=typeof explicitTime==="number"
+      ? explicitTime
+      : new Date(explicitTime).getTime();
+    if(Number.isFinite(explicitParsed) && explicitParsed>0) return explicitParsed;
+  }
+
+  const parsedDate=new Date(t?.date).getTime();
+  return Number.isFinite(parsedDate)?parsedDate:0;
+}
+
+function dashboardTransactionDateText(t){
+  const raw=t?.date;
+  const parsed=new Date(raw);
+  if(!Number.isNaN(parsed.getTime())){
+    return parsed.toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"});
+  }
+  return "Datum onbekend";
+}
+
 function renderDashboard(){
 const ts=monthTransactions();
 const incomeTransactions=ts.filter(t=>t.kind==="income").reduce((s,t)=>s+Number(t.amount),0);
@@ -1508,7 +1579,8 @@ const dashboardPokemonInvested=dashboardCryptoEntries.filter(e=>(e.assetType||"c
 const dashboardPokemonCashouts=dashboardCryptoEntries.filter(e=>(e.assetType||"crypto")==="pokemon"&&e.type==="out").reduce((s,e)=>s+Number(e.amount||0),0);
 const dashboardPokemonResult=dashboardPokemonCashouts-dashboardPokemonInvested;
 const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonCashouts);
-const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+// Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
+// als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
 // Laatste transacties voor de rekeningtegel op het dashboard.
 // Belangrijk: dit zijn werkelijk de laatste transacties over ALLE maanden,
@@ -1526,14 +1598,81 @@ const allDashboardDealplugTransactions=(Array.isArray(data.dealplug?.entries)?da
     dashboardSource:"DealPlugNL"
   }));
 const allDashboardTransactions=[...data.transactions,...allDashboardDealplugTransactions];
+
+// We nemen maximaal de laatste 3 DealPlugNL-mutaties mee, maar sorteren daarna
+// ALLE transacties samen op echte aanmaaktijd. De uid() van de app begint met
+// Date.now() en bevat daardoor de exacte aanmaaktijd. Zo staat de allerlaatste
+// transactie die je hebt gemaakt altijd echt bovenaan, ook als meerdere
+// transacties dezelfde datum hebben.
+const recentDealplugTransactions=[...allDashboardDealplugTransactions]
+  .sort((a,b)=>{
+    const dateDiff=new Date(b.date)-new Date(a.date);
+    if(dateDiff!==0)return dateDiff;
+    return String(b.id||"").localeCompare(String(a.id||""));
+  })
+  .slice(0,3);
+const recentAccountTransactions=data.transactions
+  .filter(t=>t.accountId);
+
+// Eerst de laatste 3 DealPlugNL-mutaties + alle rekeningtransacties verzamelen,
+// daarna pas gezamenlijk sorteren op datum/tijd.
+const recent=[...recentDealplugTransactions,...recentAccountTransactions]
+  .sort((a,b)=>{
+    const timeDiff=dashboardTransactionTime(b)-dashboardTransactionTime(a);
+    if(timeDiff!==0)return timeDiff;
+    const dateDiff=new Date(b.date)-new Date(a.date);
+    if(dateDiff!==0)return dateDiff;
+    return String(b.id||"").localeCompare(String(a.id||""));
+  })
+  .slice(0,10);
+
 const abnRecentTransactions=allDashboardTransactions
-  .filter(t=>t.accountId==="acc1"||t.accountId==="acc2")
-  .sort((a,b)=>new Date(b.date)-new Date(a.date))
+  .filter(t=>t.accountId==="acc1"||t.accountId==="acc2"||t.toAccountId==="acc1"||t.toAccountId==="acc2")
+  .sort((a,b)=>{
+    const timeDiff=dashboardTransactionTime(b)-dashboardTransactionTime(a);
+    if(timeDiff!==0)return timeDiff;
+    const dateDiff=new Date(b.date)-new Date(a.date);
+    if(dateDiff!==0)return dateDiff;
+    return String(b.id||"").localeCompare(String(a.id||""));
+  })
   .slice(0,3);
-const revolutRecentTransactions=allDashboardTransactions
-  .filter(t=>t.accountId==="acc4"||t.kind==="revolutAdjustment"||t.kind==="revolutTransfer"||t.fromTarget||t.toTarget||t.dashboardSource==="DealPlugNL")
-  .sort((a,b)=>new Date(b.date)-new Date(a.date))
-  .slice(0,3);
+
+const dashboardSortTime=(t)=>{
+  const v=dashboardTransactionTime(t);
+  return Number.isFinite(v)&&v>0?v:new Date(t.date||0).getTime();
+};
+const sortDashboardTransactions=(arr)=>arr.sort((a,b)=>dashboardSortTime(b)-dashboardSortTime(a));
+
+// Per Revolut-rekening de laatste 3 transacties.
+// Revolut privé = acc4 + mutaties/overboekingen naar privé.
+// DealPlugNL = DealPlugNL-verkopen/kosten + Revolut-mutaties/overboekingen.
+// Crypto/Aandelen = crypto-mutaties + Revolut-mutaties/overboekingen.
+const revolutPrivateRecentTransactions=sortDashboardTransactions(allDashboardTransactions.filter(t=>
+  (t.accountId==="acc4" && t.dashboardSource!=="DealPlugNL" && t.kind!=="revolutAdjustment") ||
+  (t.kind==="revolutAdjustment" && t.target==="private") ||
+  (t.kind==="revolutTransfer" && (t.fromTarget==="private"||t.toTarget==="private"))
+)).slice(0,3);
+const dealplugRecentTransactions=sortDashboardTransactions(allDashboardTransactions.filter(t=>
+  t.dashboardSource==="DealPlugNL" ||
+  (t.kind==="revolutAdjustment" && t.target==="dealplug") ||
+  (t.kind==="revolutTransfer" && (t.fromTarget==="dealplug"||t.toTarget==="dealplug"))
+)).slice(0,3);
+const cryptoDashboardTransactions=(Array.isArray(data.cryptoEntries)?data.cryptoEntries:[]).map(e=>({
+  id:`crypto_${e.id}`,
+  description:e.description||"Crypto / Pokémon",
+  amount:Number(e.amount||0),
+  date:e.date,
+  kind:e.type==="out"?"expense":"income",
+  target:e.assetType||"crypto",
+  dashboardSource:"Crypto / Pokémon"
+}));
+const cryptoRecentTransactions=sortDashboardTransactions([
+  ...cryptoDashboardTransactions,
+  ...allDashboardTransactions.filter(t=>
+    (t.kind==="revolutAdjustment" && t.target==="crypto") ||
+    (t.kind==="revolutTransfer" && (t.fromTarget==="crypto"||t.toTarget==="crypto"))
+  )
+]).slice(0,3);
 const compactAccountTransaction=(t)=>{
   const amount=Number(t.amount||0);
   const isIncome=t.kind==="income";
@@ -1542,7 +1681,9 @@ const compactAccountTransaction=(t)=>{
   const cls=isIncome?"positive":isTransfer?"":"negative";
   const source=t.dashboardSource||({private:"Privé",dealplug:"DealPlugNL",crypto:"Crypto / Pokémon"}[t.target]||"");
   const sourceText=source?` · ${esc(source)}`:"";
-  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"})}${sourceText}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
+  const txTime=dashboardTransactionTime(t);
+  const timeText=Number.isFinite(txTime)&&txTime>0?new Date(txTime).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"}):"";
+  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${dashboardTransactionDateText(t)}${timeText?` · ${timeText}`:""}${sourceText}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
 };
 
 const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
@@ -1565,7 +1706,7 @@ $("dashboard").innerHTML=`
 </summary>
 <div class="dashboard-abn-details-inner">
   <div class="small dashboard-subrow-title">Laatste 3 transacties</div>
-  <div class="dashboard-account-transactions">
+  <div class="dashboard-account-transactions dashboard-account-transactions-scroll">
     ${abnRecentTransactions.length?abnRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen ABN-transacties</div>`}
   </div>
 </div>
@@ -1576,12 +1717,25 @@ $("dashboard").innerHTML=`
 <div class="amount">${protectedEuro(dashboardRevolutBalance)}</div>
 </summary>
 <div class="dashboard-revolut-details-inner">
-  <div class="small dashboard-subrow"><span>Revolut privé</span><strong>${protectedEuro(displayedBalances.privateRevolut)}</strong></div>
-  <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(displayedBalances.dealplug)}</strong></div>
-  <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(displayedBalances.crypto)}</strong></div>
-  <div class="dashboard-account-transactions revolut-last-transaction">
-    <div class="small dashboard-subrow-title">Laatste 3 transacties</div>
-    ${revolutRecentTransactions.length?revolutRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small">Nog geen Revolut-transacties</div>`}
+  <div class="dashboard-revolut-subaccount">
+    <div class="small dashboard-subrow"><span>Revolut privé</span><strong>${protectedEuro(displayedBalances.privateRevolut)}</strong></div>
+    <div class="dashboard-account-transactions revolut-subaccount-transactions">
+      ${revolutPrivateRecentTransactions.length?revolutPrivateRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small dashboard-no-transactions">Nog geen transacties</div>`}
+    </div>
+  </div>
+
+  <div class="dashboard-revolut-subaccount">
+    <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(displayedBalances.dealplug)}</strong></div>
+    <div class="dashboard-account-transactions revolut-subaccount-transactions">
+      ${dealplugRecentTransactions.length?dealplugRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small dashboard-no-transactions">Nog geen transacties</div>`}
+    </div>
+  </div>
+
+  <div class="dashboard-revolut-subaccount">
+    <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(displayedBalances.crypto)}</strong></div>
+    <div class="dashboard-account-transactions revolut-subaccount-transactions">
+      ${cryptoRecentTransactions.length?cryptoRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small dashboard-no-transactions">Nog geen transacties</div>`}
+    </div>
   </div>
 </div>
 </details>
@@ -1833,7 +1987,10 @@ const sign=t.kind==="income"?"+":t.kind==="transfer"||t.kind==="revolutTransfer"
 const cls=t.kind==="income"||t.kind==="revolutAdjustment"&&t.direction==="add"?"positive":t.kind==="expense"||t.kind==="revolutAdjustment"&&t.direction==="remove"?"negative":"";
 const accountLabel=t.kind==="revolutAdjustment"?({private:"Revolut privé",dealplug:"DealPlugNL",crypto:"Crypto / Aandelen"}[t.target]||"Revolut"):t.kind==="revolutTransfer"?`${({private:"Revolut privé",dealplug:"DealPlugNL",crypto:"Crypto / Aandelen"}[t.fromTarget]||"Revolut")} → ${({private:"Revolut privé",dealplug:"DealPlugNL",crypto:"Crypto / Aandelen"}[t.toTarget]||"Revolut")}`:(t.quickOnly?"Uitgavenregistratie":(acc?.name||"-"));
 const categoryLabel=t.kind==="revolutAdjustment"?"Revolut mutatie":t.category;
-return `<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(categoryLabel)}</span></td><td>${new Date(t.date).toLocaleDateString("nl-NL")}</td>${full?`<td>${esc(accountLabel)}${t.kind==="transfer"&&to?` → ${esc(to.name)}`:""}</td>`:""}<td class="${cls}">${sign}${euro(t.amount)}</td>${full?`<td><div class="actions"><button data-edit="${t.id}" title="Bewerken"><i data-lucide="pencil"></i></button><button data-delete="${t.id}" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td>`:""}</tr>`;
+const txTime=dashboardTransactionTime(t);
+const txDate=new Date(t.date).toLocaleDateString("nl-NL");
+const txTimeText=Number.isFinite(txTime)&&txTime>0?new Date(txTime).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"}):"";
+return `<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(categoryLabel)}</span></td><td><span class="transaction-date">${txDate}<small>${txTimeText}</small></span></td>${full?`<td>${esc(accountLabel)}${t.kind==="transfer"&&to?` → ${esc(to.name)}`:""}</td>`:""}<td class="${cls}">${sign}${euro(t.amount)}</td>${full?`<td><div class="actions"><button data-edit="${t.id}" title="Bewerken"><i data-lucide="pencil"></i></button><button data-delete="${t.id}" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td>`:""}</tr>`;
 }
 
 function renderTransactions(){
@@ -2833,9 +2990,71 @@ render();
 }
 init();
 </script>
+<style id="transaction-time-display">
+/* Kleine tijdweergave bij transactiedatum */
+.transaction-date{display:inline-flex;flex-direction:column;line-height:1.25;}
+.transaction-date small{font-size:9px;color:var(--muted);font-weight:500;margin-top:1px;}
+.dashboard-account-tx-row span{display:block;}
+@media(max-width:700px){
+  .transaction-date small{font-size:8px;}
+}
+</style>
+
+<style id="dashboard-recent-transactions-v2">
+/* Dashboard: maximaal 10 recente transacties, nieuwste bovenaan en duidelijke kleuren */
+#dashboard .recent-overview-grid .table td:last-child,
+#dashboard .recent-overview-grid .table td .positive{
+  color:var(--green) !important;
+  font-weight:650 !important;
+}
+#dashboard .recent-overview-grid .table td:last-child .negative,
+#dashboard .recent-overview-grid .table td .negative{
+  color:var(--red) !important;
+  font-weight:650 !important;
+}
+#dashboard .recent-overview-grid .table td{
+  font-size:11px;
+  padding:9px 7px;
+}
+#dashboard .recent-overview-grid .table th{
+  font-size:10px;
+  padding:8px 7px;
+}
+@media(max-width:700px){
+  #dashboard .recent-overview-grid .table td{font-size:9.5px;padding:7px 3px;}
+  #dashboard .recent-overview-grid .table th{font-size:9px;padding:7px 3px;}
+}
+</style>
+
+<style id="dashboard-recent-transactions-fix-v3">
+/* Dashboard recente transacties: inkomsten groen, uitgaven rood. */
+#dashboard .transactions .table td.positive{
+  color:var(--green) !important;
+  font-weight:650 !important;
+}
+#dashboard .transactions .table td.negative{
+  color:var(--red) !important;
+  font-weight:650 !important;
+}
+#dashboard .transactions .table td{font-size:11px;}
+#dashboard .transactions .table th{font-size:10px;}
+@media(max-width:700px){
+  #dashboard .transactions .table td{font-size:9.5px;}
+  #dashboard .transactions .table th{font-size:9px;}
+}
+</style>
 </body>
 
+<style id="dashboard-revolut-subaccount-transactions">
+.dashboard-revolut-subaccount{padding-bottom:2px;}
+.dashboard-revolut-subaccount + .dashboard-revolut-subaccount{margin-top:2px;}
+.revolut-subaccount-transactions{margin:0 0 5px 0;padding-left:0;}
+.revolut-subaccount-transactions .dashboard-account-tx-row{padding:6px 0 6px 10px;margin-left:0;border-bottom:1px solid var(--border);}
+.revolut-subaccount-transactions .dashboard-account-tx-row > div span{font-size:11px;}
+.dashboard-no-transactions{padding:4px 0 8px 10px;color:var(--muted);}
+</style>
 <style id="dashboard-account-details">
+.dashboard-abn-summary .account-left > div > strong{font-weight:400;}
 .dashboard-abn-details,.dashboard-revolut-details{width:100%;}
 .dashboard-abn-summary,.dashboard-revolut-summary{list-style:none;cursor:pointer;}
 .dashboard-abn-summary::-webkit-details-marker,.dashboard-revolut-summary::-webkit-details-marker{display:none;}
@@ -2846,12 +3065,13 @@ init();
 
 <style id="dashboard-account-transactions">
 .dashboard-account-transactions{margin:5px 0 8px 48px;border-top:1px solid var(--border);padding-top:5px;}
+.dashboard-account-transactions-scroll{max-height:320px;overflow-y:auto;padding-right:5px;}
 .dashboard-account-tx-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;}
 .dashboard-account-tx-row:last-child{border-bottom:0;}
 .dashboard-account-tx-row strong{font-weight:600;}
 .dashboard-account-tx-row span{display:block;color:var(--muted);font-size:9px;margin-top:1px;}
-.dashboard-account-tx-row .positive{color:var(--positive)!important;}
-.dashboard-account-tx-row .negative{color:var(--negative)!important;}
+.dashboard-account-tx-row .positive{color:var(--green)!important;}
+.dashboard-account-tx-row .negative{color:var(--red)!important;}
 .revolut-last-transaction{margin-left:0;margin-top:8px;padding-top:8px;}
 .dashboard-subrow-title{font-size:10px;font-weight:600;margin-bottom:2px;}
 @media(max-width:700px){
