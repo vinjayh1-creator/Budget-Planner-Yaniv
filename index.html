@@ -1661,22 +1661,15 @@ const dealplugRecentTransactions=sortDashboardTransactions(allDashboardTransacti
   (t.kind==="revolutAdjustment" && t.target==="dealplug") ||
   (t.kind==="revolutTransfer" && (t.fromTarget==="dealplug"||t.toTarget==="dealplug"))
 )).slice(0,3);
-const cryptoDashboardTransactions=(Array.isArray(data.cryptoEntries)?data.cryptoEntries:[]).map(e=>({
-  id:`crypto_${e.id}`,
-  description:e.description||"Crypto / Pokémon",
-  amount:Number(e.amount||0),
-  date:e.date,
-  kind:e.type==="out"?"expense":"income",
-  target:e.assetType||"crypto",
-  dashboardSource:"Crypto / Pokémon"
-}));
-const cryptoRecentTransactions=sortDashboardTransactions([
-  ...cryptoDashboardTransactions,
-  ...allDashboardTransactions.filter(t=>
+// Crypto / Aandelen is een aparte geldrekening binnen Revolut.
+// Belangrijk: de administratie uit het tabblad Crypto/Pokemon (data.cryptoEntries)
+// hoort hier NIET bij. Alleen geldmutaties van de aparte rekening zelf worden getoond.
+const cryptoRecentTransactions=sortDashboardTransactions(
+  allDashboardTransactions.filter(t=>
     (t.kind==="revolutAdjustment" && t.target==="crypto") ||
     (t.kind==="revolutTransfer" && (t.fromTarget==="crypto"||t.toTarget==="crypto"))
   )
-]).slice(0,3);
+).slice(0,3);
 const compactAccountTransaction=(t)=>{
   const amount=Number(t.amount||0);
   const isIncome=t.kind==="income";
