@@ -1039,6 +1039,8 @@ nav button.active{background:var(--soft);color:var(--primary);}
 
 <style id="dashboard-account-font-equal">
 /* ABN Amro en Revolut in het dashboard exact dezelfde tekstgewicht */
+.dashboard-abn-summary .account-left > div:last-child{font-weight:400;}
+.dashboard-abn-summary .account-left > div:last-child strong{font-weight:400;}
 .dashboard-revolut-summary .account-left > div:last-child{font-weight:400;}
 .dashboard-revolut-summary .account-left > div:last-child strong{font-weight:400;}
 </style>
@@ -1556,7 +1558,22 @@ const compactAccountTransaction=(t)=>{
   const isTransfer=t.kind==="transfer"||t.kind==="revolutTransfer";
   const sign=isIncome?"+":isTransfer?"↔":"-";
   const cls=isIncome?"positive":isTransfer?"": "negative";
-  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"})}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
+  const revolutLabels={private:"Privé",dealplug:"DealPlugNL",crypto:"Crypto / Pokémon"};
+  let location="";
+  if(t.kind==="revolutTransfer") {
+    const from=revolutLabels[t.fromTarget]||"Revolut";
+    const to=revolutLabels[t.toTarget]||"Revolut";
+    location=`${from} → ${to}`;
+  } else if(t.kind==="revolutAdjustment") {
+    location=revolutLabels[t.target]||"Revolut";
+  } else if(t.dealplugSale) {
+    location="DealPlugNL";
+  } else if(t.accountId==="acc4" || t.accountId==="revolut-subaccount") {
+    location="Privé";
+  }
+  const metaDate=new Date(t.date).toLocaleDateString("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const meta=location?`${metaDate} · ${location}`:metaDate;
+  return `<div class="dashboard-account-tx-row"><div><strong>${esc(t.description||"Transactie")}</strong><span>${esc(meta)}</span></div><strong class="${cls}">${sign}${euro(amount)}</strong></div>`;
 };
 
 const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
