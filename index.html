@@ -1496,9 +1496,11 @@ function displayedAccountBalances(month){
 
   const dealplug=dealplugBase+dealplugTransfers+dealplugNetForMonth(key);
   const crypto=cryptoBase+cryptoTransfers;
-  // Crypto / Aandelen staat los van Revolut en wordt daarom NIET
-  // meegerekend in het Revolut-saldo op het dashboard.
-  const revolut=privateRevolut+dealplug;
+  // Crypto / Aandelen is een aparte subrekening binnen het totale Revolut-
+  // vermogen. Het bedrag wordt dus wel meegenomen in het Revolut-totaal,
+  // maar blijft afzonderlijk zichtbaar en wordt niet vermengd met de andere
+  // subrekeningen.
+  const revolut=privateRevolut+dealplug+crypto;
 
   return {abn,privateRevolut,dealplug,crypto,revolut,total:abn+revolut};
 }
@@ -1730,6 +1732,13 @@ $("dashboard").innerHTML=`
     <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(displayedBalances.dealplug)}</strong></div>
     <div class="dashboard-account-transactions revolut-subaccount-transactions">
       ${dealplugRecentTransactions.length?dealplugRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small dashboard-no-transactions">Nog geen transacties</div>`}
+    </div>
+  </div>
+
+  <div class="dashboard-revolut-subaccount">
+    <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(displayedBalances.crypto)}</strong></div>
+    <div class="dashboard-account-transactions revolut-subaccount-transactions">
+      ${cryptoRecentTransactions.length?cryptoRecentTransactions.map(compactAccountTransaction).join(""):`<div class="small dashboard-no-transactions">Nog geen transacties</div>`}
     </div>
   </div>
 
@@ -2322,8 +2331,10 @@ function revolutPrivateBalance(snapshot){
 function revolutSubTotal(snapshot,month){
   const subs=snapshot?.revolutSubaccounts||{};
   const dealplug=month?dealplugBalanceForMonth(month,snapshot):Number(subs.dealplug||0);
-  // Crypto / Aandelen is een aparte positie en hoort niet bij Revolut.
-  return dealplug;
+  const crypto=Number(subs.crypto||0);
+  // Crypto / Aandelen blijft een aparte subrekening, maar telt wel mee in
+  // het totale Revolut-saldo.
+  return dealplug+crypto;
 }
 function revolutTotal(snapshot,month){
   return revolutPrivateBalance(snapshot)+revolutSubTotal(snapshot,month);
