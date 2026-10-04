@@ -1360,17 +1360,20 @@ function processRecurringTransactions(){
 const now=new Date();
 const realMonth=monthKey(now);
 const day=now.getDate();
+const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
 let changed=false;
 data.recurring.forEach(r=>{
 const marker=realMonth+"_"+r.id;
 if(data.processedRecurring[marker])return;
-if(day<Number(r.day||1))return;
+const scheduledDay=Math.min(31,Math.max(1,Number(r.day||1)));
+const effectiveDay=Math.min(scheduledDay,lastDay);
+if(day<effectiveDay)return;
 const acc=accountById(r.accountId);
 if(!acc)return;
 const amount=Number(r.amount)||0;
 if(amount<=0)return;
 if(r.kind==="expense"&&acc.balance<amount)return;
-const txDate=new Date(now.getFullYear(),now.getMonth(),Number(r.day||1));
+const txDate=new Date(now.getFullYear(),now.getMonth(),effectiveDay);
 const tx={id:uid(),description:r.description,amount,date:dateKey(txDate),category:r.category,accountId:r.accountId,kind:r.kind,recurringId:r.id};
 data.transactions.push(tx);
 acc.balance += r.kind==="income"?amount:-amount;
@@ -2655,9 +2658,9 @@ $("recurring").innerHTML=`<div class="topbar"><div><h1>Terugkerend</h1><div clas
 <div class="form-actions"><label class="toggle" style="display:flex;align-items:center;gap:10px"><input id="weeklySalaryEnabled" type="checkbox" ${data.weeklySalary?.enabled?"checked":""}> Inschakelen</label><button type="button" class="btn primary" id="saveWeeklySalary">Wekelijks loon opslaan</button></div></div>
 <div class="notice"><i data-lucide="info"></i> Op de gekozen dag wordt de transactie automatisch één keer per maand toegevoegd. Een uitgave wordt alleen verwerkt als er voldoende saldo is.</div>
 <div class="card"><div class="section-title">Terugkerende transactie toevoegen</div><form id="recForm"><div class="toggle"><button type="button" data-reckind="expense" class="active">Uitgave</button><button type="button" data-reckind="income">Inkomst</button></div>
-<div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div></div>
+<div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="31" step="1" value="1" required inputmode="numeric"><div class="small">Bijv. 1 voor huur, 5 voor verzekering.</div></div></div>
 <div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form></div>
-<div class="card transactions"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand · ${esc(r.category)} · ${esc(accountById(r.accountId)?.name||"-")}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" data-rec-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
+<div class="card transactions"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${Number(r.day||1)} · ${esc(r.category)} · ${esc(accountById(r.accountId)?.name||"-")}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" data-rec-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
 $("saveWeeklySalary").onclick=()=>{
   const amount=Number($("weeklySalaryAmount").value);
   const accountId=$("weeklySalaryAccount").value;
@@ -2670,7 +2673,7 @@ $("saveWeeklySalary").onclick=()=>{
 };
 let kind="expense";
 document.querySelectorAll("[data-reckind]").forEach(b=>b.onclick=()=>{kind=b.dataset.reckind;document.querySelectorAll("[data-reckind]").forEach(x=>x.classList.toggle("active",x===b))});
-$("recForm").onsubmit=e=>{e.preventDefault();const amount=Number($("recAmount").value);if(!Number.isFinite(amount)||amount<=0){notify("Controleer het bedrag.");return}data.recurring.push({id:uid(),description:$("recDesc").value.trim(),amount,category:$("recCat").value,accountId:$("recAcc").value,day:1,kind});saveAndRender()};
+$("recForm").onsubmit=e=>{e.preventDefault();const amount=Number($("recAmount").value);if(!Number.isFinite(amount)||amount<=0){notify("Controleer het bedrag.");return}const day=Math.min(31,Math.max(1,Math.floor(Number($("recDay").value)||1)));const description=$("recDesc").value.trim();if(!description){notify("Vul een omschrijving in.");return}data.recurring.push({id:uid(),description,amount,category:$("recCat").value,accountId:$("recAcc").value,day,kind});saveAndRender()};
 document.querySelectorAll("[data-rec-delete]").forEach(b=>b.onclick=()=>{if(confirm("Terugkerende transactie verwijderen?")){data.recurring.splice(Number(b.dataset.recDelete),1);saveAndRender()}});
 }
 
