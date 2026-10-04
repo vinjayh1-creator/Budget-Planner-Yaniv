@@ -1648,7 +1648,7 @@ const sortDashboardTransactions=(arr)=>arr.sort((a,b)=>dashboardSortTime(b)-dash
 // DealPlugNL = DealPlugNL-verkopen/kosten + Revolut-mutaties/overboekingen.
 // Crypto/Aandelen = crypto-mutaties + Revolut-mutaties/overboekingen.
 const revolutPrivateRecentTransactions=sortDashboardTransactions(allDashboardTransactions.filter(t=>
-  (t.accountId==="acc4" && t.dashboardSource!=="DealPlugNL" && t.kind!=="revolutAdjustment") ||
+  ((t.accountId==="acc4"||t.toAccountId==="acc4") && t.dashboardSource!=="DealPlugNL" && t.kind!=="revolutAdjustment") ||
   (t.kind==="revolutAdjustment" && t.target==="private") ||
   (t.kind==="revolutTransfer" && (t.fromTarget==="private"||t.toTarget==="private"))
 )).slice(0,3);
@@ -3041,6 +3041,18 @@ init();
 @media(max-width:700px){
   #dashboard .transactions .table td{font-size:9.5px;}
   #dashboard .transactions .table th{font-size:9px;}
+}
+</style>
+<style id="dashboard-revolut-match-abn">
+/* Revolut uitgeklapt visueel gelijk aan ABN Amro */
+.dashboard-revolut-summary{
+  background:color-mix(in srgb,var(--card) 97%,var(--soft)) !important;
+}
+.dashboard-revolut-summary:hover{
+  background:color-mix(in srgb,var(--card) 97%,var(--soft)) !important;
+}
+.dashboard-revolut-details-inner{
+  background:transparent !important;
 }
 </style>
 </body>
