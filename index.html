@@ -2815,10 +2815,12 @@ function renderCrypto(){
   const pokemonTotalInvested=pokemonInitial+legacyPokemonInvested+pokemonCardPurchaseTotal;
   const pokemonTotalCashouts=legacyPokemonCashouts+pokemonSalesTotal;
   const pokemonResult=legacyPokemonResult+pokemonCardRealized;
+  // Huidige waarde op het dashboard = historische inleg + aankoopprijs
+  // van de kaarten die momenteel in de collectie zitten.
+  // De per-kaart "Huidige waarde" blijft apart beschikbaar voor waardering
+  // per kaart, maar bepaalt niet het dashboardbedrag.
   const pokemonCardCurrentValue=pokemonHeldCards.reduce((sum,c)=>sum+Number(c.currentValue||0),0);
-  const pokemonCurrentValue=pokemonCards.length>0
-    ? pokemonCardCurrentValue
-    : Number(data.pokemonCurrentValue||0);
+  const pokemonCurrentValue=pokemonInitial+pokemonHeldCost;
   const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
   const pokemonUnrealized=pokemonCurrentValue-pokemonOpenCost;
   const pokemonTotalReturn=pokemonResult+pokemonUnrealized;
@@ -3005,7 +3007,7 @@ function renderCrypto(){
         <span>Mijn Pokémon collectie</span>
         <span class="small">${pokemonCards.length} geregistreerd</span>
       </div>
-      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> bovenaan wordt automatisch berekend op basis van de actuele waarde van alle kaarten die nog in bezit zijn.</div>
+      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> bovenaan is je historische inleg plus de aankoopprijs van de kaarten die momenteel in je collectie zitten.</div>
       ${pokemonCards.length?`
       <div class="table-wrap pokemon-collection-table-wrap">
         <table class="table pokemon-collection-table">
