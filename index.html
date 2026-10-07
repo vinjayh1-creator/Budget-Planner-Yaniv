@@ -1774,8 +1774,13 @@ const dashboardPokemonLegacyCashouts=dashboardCryptoEntries.filter(e=>(e.assetTy
 const dashboardPokemonCardPurchaseTotal=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.reduce((s,c)=>s+Number(c.purchasePrice||0),0)
   : 0;
-const dashboardPokemonInvested=Number(data.pokemonInitialInvestment||0)+dashboardPokemonLegacyInvested+dashboardPokemonCardPurchaseTotal;
-const dashboardPokemonCashouts=dashboardPokemonLegacyCashouts+  (Array.isArray(data.pokemonCards)?data.pokemonCards.filter(c=>c.status==="sold").reduce((s,c)=>s+Number(c.salePrice||0),0):0);
+// Dashboard: Pokémon-inleg = historische inleg + nieuwe kaart-aankopen.
+// Verkoopopbrengsten van Pokémon worden apart getoond van crypto-uitcashingen.
+const dashboardPokemonInvested=Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardPurchaseTotal;
+const dashboardPokemonSold=Array.isArray(data.pokemonCards)
+  ? data.pokemonCards.filter(c=>c.status==="sold").reduce((s,c)=>s+Number(c.salePrice||0),0)
+  : 0;
+const dashboardPokemonCashouts=dashboardPokemonSold;
 const dashboardPokemonResult=dashboardPokemonCashouts-dashboardPokemonInvested;
 const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonCashouts);
 // Pokémon-waarde op het dashboard = historische inleg + aankoopprijs van kaarten die nog in bezit zijn.
@@ -2150,7 +2155,11 @@ ${(()=>{
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);gap:10px">
 <div><div class="small">Totale inleg</div><div style="font-weight:500;margin-top:3px">${protectedEuro(dashboardCryptoInvested+dashboardPokemonInvested)}</div></div>
-<div style="text-align:right"><div class="small">Uitgecasht / verkocht</div><div style="font-weight:500;margin-top:3px">${protectedEuro(dashboardCryptoCashouts+dashboardPokemonCashouts)}</div></div>
+<div style="text-align:right"><div class="small">Crypto uitgecasht</div><div style="font-weight:500;margin-top:3px">${protectedEuro(dashboardCryptoCashouts)}</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);gap:10px">
+<div><div class="small">Pokemon verkocht</div><div style="font-weight:500;margin-top:3px">${protectedEuro(dashboardPokemonSold)}</div></div>
+<div style="text-align:right"><div class="small">Totale opbrengst</div><div style="font-weight:500;margin-top:3px">${protectedEuro(dashboardCryptoCashouts+dashboardPokemonSold)}</div></div>
 </div>
 </div>
 <div class="card dealplug-dashboard-card dashboard-full-tile">
