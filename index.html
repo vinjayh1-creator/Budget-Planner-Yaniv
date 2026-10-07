@@ -1783,6 +1783,8 @@ const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonC
 const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.purchasePrice||0),0)
   : 0;
+// De actuele Pokémon-waarde wordt altijd opnieuw uit de per-kaart waarden berekend.
+// Daardoor verandert de dashboardtegel direct wanneer je bij een kaart de huidige waarde aanpast.
 const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
   : 0;
@@ -2811,10 +2813,8 @@ function renderCrypto(){
   const pokemonTotalInvested=pokemonInitial+legacyPokemonInvested+pokemonCardPurchaseTotal;
   const pokemonTotalCashouts=legacyPokemonCashouts+pokemonSalesTotal;
   const pokemonResult=legacyPokemonResult+pokemonCardRealized;
-  // Huidige waarde op het dashboard = historische inleg + aankoopprijs
-  // van de kaarten die momenteel in de collectie zitten.
-  // De per-kaart "Huidige waarde" blijft apart beschikbaar voor waardering
-  // per kaart, maar bepaalt niet het dashboardbedrag.
+  // Huidige waarde = historische inleg + de actuele waarde van alle kaarten
+  // die momenteel in de collectie zitten. Dit wordt bij iedere render opnieuw berekend.
   const pokemonCardCurrentValue=pokemonHeldCards.reduce((sum,c)=>sum+Number(c.currentValue||0),0);
   const pokemonCurrentValue=pokemonInitial+pokemonCardCurrentValue;
   const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
@@ -3003,7 +3003,7 @@ function renderCrypto(){
         <span>Mijn Pokémon collectie</span>
         <span class="small">${pokemonCards.length} geregistreerd</span>
       </div>
-      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> bovenaan is je historische inleg plus de aankoopprijs van de kaarten die momenteel in je collectie zitten.</div>
+      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> wordt automatisch berekend als historische inleg plus de actuele waarde van de kaarten die momenteel in je collectie zitten.</div>
       ${pokemonCards.length?`
       <div class="table-wrap pokemon-collection-table-wrap">
         <table class="table pokemon-collection-table">
@@ -3149,6 +3149,7 @@ function renderCrypto(){
     const value=Number(String(entered).replace(",",".").trim());
     if(!Number.isFinite(value)||value<0){notify("Vul een geldige huidige waarde in.");return}
     card.currentValue=value;
+    // Opslaan en alle Pokémon-/dashboardtegels direct opnieuw berekenen.
     saveAndRender();
   });
 
