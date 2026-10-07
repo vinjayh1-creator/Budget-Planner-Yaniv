@@ -4026,3 +4026,45 @@ init();
   #recurring .field select{padding:7px 8px;min-height:33px;}
 }
 </style>
+
+<style id="pokemon-summary-mobile-compact">
+/* Compacte Pokémon-overzichtstegels op mobiel */
+@media(max-width:700px){
+  .pokemon-summary-cards{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:7px !important;
+  }
+  .pokemon-summary-cards .card{
+    padding:10px !important;
+    border-radius:12px !important;
+  }
+  .pokemon-summary-cards .stat-label{
+    font-size:10px !important;
+    line-height:1.2;
+    gap:5px !important;
+  }
+  .pokemon-summary-cards .stat-label svg{
+    width:15px !important;
+    height:15px !important;
+    flex:0 0 auto;
+  }
+  .pokemon-summary-cards .stat-value{
+    font-size:16px !important;
+    line-height:1.15;
+    margin-top:6px !important;
+  }
+  .pokemon-summary-cards .small{
+    font-size:9px !important;
+    line-height:1.25;
+    margin-top:4px !important;
+  }
+}
+@media(max-width:390px){
+  .pokemon-summary-cards{gap:6px !important;}
+  .pokemon-summary-cards .card{padding:9px !important;}
+  .pokemon-summary-cards .stat-label{font-size:9px !important;}
+  .pokemon-summary-cards .stat-value{font-size:15px !important;}
+  .pokemon-summary-cards .small{font-size:8.5px !important;}
+}
+</style>
+
