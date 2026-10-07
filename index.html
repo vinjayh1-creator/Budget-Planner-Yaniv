@@ -1798,9 +1798,6 @@ const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
   : 0;
 const dashboardPokemonLegacyCurrentValue=Number(data.pokemonCurrentValue||0);
-const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
-  ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
-  : 0;
 // Dashboard: actuele Pokémon-waarde = de eerder opgeslagen huidige collectie-waarde + actuele waarde van nieuwe kaarten.
 const dashboardPokemonValue=dashboardPokemonLegacyCurrentValue+dashboardPokemonCardCurrentValue;
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
