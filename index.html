@@ -3767,8 +3767,25 @@ init();
   #dashboard .dashboard-recurring-summary > div[style*="grid-template-columns:1fr 1fr"] > div{padding:7px !important;}
   #dashboard .dashboard-recurring-summary > div[style*="grid-template-columns:1fr 1fr"] > div .negative,
   #dashboard .dashboard-recurring-summary > div[style*="grid-template-columns:1fr 1fr"] > div .positive{font-size:15px !important;}
-  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid > div{padding:7px !important;}
-  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid > div > div:last-child{font-size:15px !important;}
+
+  /* Crypto & Pokémon: extra compact op mobiel */
+  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid{
+    gap:6px !important;
+    margin-top:9px !important;
+  }
+  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid > div{
+    padding:6px !important;
+    border-radius:9px !important;
+  }
+  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid > div .small{
+    font-size:9px !important;
+    line-height:1.2;
+  }
+  #dashboard .dashboard-crypto-pokemon-card .dashboard-investment-grid > div > div:last-child{
+    font-size:14px !important;
+    margin-top:2px !important;
+  }
+
   #dashboard .dealplug-dashboard-card .stat-value{font-size:18px !important;}
 }
 </style>
