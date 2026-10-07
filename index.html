@@ -2839,14 +2839,6 @@ function renderCrypto(){
         <div class="stat-label"><i data-lucide="arrow-up-right"></i>Uitgecasht</div>
         <div class="stat-value">${protectedEuro(cryptoCashouts)}</div>
       </div>
-      <div class="card">
-        <div class="stat-label"><i data-lucide="${cryptoResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
-        <div class="stat-value ${cryptoResult>=0?"positive":"negative"}">${cryptoResult>=0?"+":""}${protectedEuro(cryptoResult)}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label"><i data-lucide="coins"></i>Nog in crypto</div>
-        <div class="stat-value">${protectedEuro(cryptoOpen)}</div>
-      </div>
     </div>
 
     <div class="card transactions">
@@ -2897,6 +2889,12 @@ function renderCrypto(){
           </tr>`).join("")}
         </tbody>
       </table></div>`:`<div class="empty">Nog geen crypto-transacties.</div>`}
+    </div>
+
+    <div class="card crypto-realized-result-card" style="margin-top:12px;">
+      <div class="stat-label"><i data-lucide="${cryptoResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
+      <div class="stat-value ${cryptoResult>=0?"positive":"negative"}">${cryptoResult>=0?"+":""}${protectedEuro(cryptoResult)}</div>
+      <div class="small" style="margin-top:5px">Uitgecasht minus totale inleg</div>
     </div>
   </div>
 
