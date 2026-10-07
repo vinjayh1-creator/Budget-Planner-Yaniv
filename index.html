@@ -2943,8 +2943,12 @@ function renderCrypto(){
           <label>Mijn historische inleg (€)</label>
           <input id="pokemonInitialInvestment" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonInitial||""}" placeholder="Bijv. 2.000">
         </div>
+        <div class="field">
+          <label>Huidige waarde volledige collectie (€)</label>
+          <input id="pokemonCurrentValue" type="number" min="0" step=".01" inputmode="decimal" value="${data.pokemonCurrentValue||""}" placeholder="Bijv. 2.500">
+        </div>
       </div>
-      <div class="small" style="margin-top:10px">Vul hier de actuele verkoop-/marktwaarde van je volledige Pokémon-collectie in. Hiermee wordt de ongerealiseerde winst berekend.</div>
+      <div class="small" style="margin-top:10px">De historische inleg wordt getoond bij <strong>Totale inleg</strong>. De huidige marktwaarde wordt getoond bij <strong>Huidige waarde</strong> en op het dashboard bij <strong>Pokemon waarde</strong>.</div>
       <div class="form-actions">
         <button class="btn primary" id="savePokemonInitialInvestment"><i data-lucide="save"></i>Overzicht opslaan</button>
       </div>
@@ -3119,8 +3123,12 @@ function renderCrypto(){
     const initialRaw=String($("pokemonInitialInvestment").value||"").replace(",",".").trim();
     const initial=initialRaw===""?0:Number(initialRaw);
     if(!Number.isFinite(initial)||initial<0){notify("Vul een geldige historische inleg in.");return}
+    const currentRaw=String($("pokemonCurrentValue").value||"").replace(",",".").trim();
+    const current=currentRaw===""?0:Number(currentRaw);
+    if(!Number.isFinite(current)||current<0){notify("Vul een geldige huidige Pokémon-waarde in.");return}
     data.pokemonInitialInvestment=initial;
     data.pokemonInitialInvestmentSet=true;
+    data.pokemonCurrentValue=current;
     saveAndRender();
     notify("Historische Pokémon-inleg opgeslagen.");
   };
