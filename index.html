@@ -2920,10 +2920,6 @@ function renderCrypto(){
           <label>Mijn historische inleg (€)</label>
           <input id="pokemonInitialInvestment" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonInitial||""}" placeholder="Bijv. 2.000">
         </div>
-        <div class="field">
-          <label>Huidige marktwaarde collectie (€)</label>
-          <input id="pokemonCurrentValue" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonCurrentValue||""}" placeholder="Bijv. 2.750">
-        </div>
       </div>
       <div class="small" style="margin-top:10px">Vul hier de actuele verkoop-/marktwaarde van je volledige Pokémon-collectie in. Hiermee wordt de ongerealiseerde winst berekend.</div>
       <div class="form-actions">
@@ -2996,6 +2992,16 @@ function renderCrypto(){
         <span>Mijn Pokémon collectie</span>
         <span class="small">${pokemonCards.length} geregistreerd</span>
       </div>
+      <div class="form-grid" style="margin-top:12px;align-items:end;">
+        <div class="field">
+          <label>Huidige waarde collectie (€)</label>
+          <input id="pokemonCurrentValue" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonCurrentValue||""}" placeholder="Bijv. 2.750">
+        </div>
+        <div class="form-actions" style="margin-top:0;">
+          <button class="btn primary" id="savePokemonCurrentValue"><i data-lucide="save"></i>Waarde opslaan</button>
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">Vul zelf de actuele waarde van je volledige Pokémon-collectie in. Deze waarde wordt direct gebruikt voor <strong>Huidige waarde</strong> en je rendementsberekening.</div>
       ${pokemonCards.length?`
       <div class="table-wrap pokemon-collection-table-wrap">
         <table class="table pokemon-collection-table">
@@ -3099,6 +3105,15 @@ function renderCrypto(){
     data.pokemonCurrentValue=current;
     saveAndRender();
     notify("Pokémon-overzicht opgeslagen.");
+  };
+
+  $("savePokemonCurrentValue").onclick=()=>{
+    const raw=String($("pokemonCurrentValue").value||"").replace(",",".").trim();
+    const current=raw===""?0:Number(raw);
+    if(!Number.isFinite(current)||current<0){notify("Vul een geldige waarde in.");return}
+    data.pokemonCurrentValue=current;
+    saveAndRender();
+    notify("Huidige Pokémon-waarde opgeslagen.");
   };
 
   $("pokemonCardCondition").onchange=updatePokemonPsaFields;
