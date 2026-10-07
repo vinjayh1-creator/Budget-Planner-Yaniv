@@ -3029,6 +3029,12 @@ function renderCrypto(){
       </div>`:`<div class="empty">Nog geen kaarten geregistreerd. Voeg hierboven je volgende aankoop toe.</div>`}
     </div>
 
+    <div class="card pokemon-realized-result-card" style="margin-top:12px;">
+      <div class="stat-label"><i data-lucide="${pokemonResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
+      <div class="stat-value ${pokemonResult>=0?"positive":"negative"}">${pokemonResult>=0?"+":""}${protectedEuro(pokemonResult)}</div>
+      <div class="small" style="margin-top:5px">Verkocht minus inleg van verkochte Pokémon</div>
+    </div>
+
 
   </div>`;
 
