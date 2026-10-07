@@ -1796,7 +1796,7 @@ const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
 const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
   : 0;
-const dashboardPokemonValue=Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardCurrentValue;
+const dashboardPokemonValue=dashboardPokemonInvested;
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
 // als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
