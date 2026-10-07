@@ -1393,6 +1393,11 @@ nav button.active{background:var(--soft);color:var(--primary);}
 .pokemon-collection-table .actions button{width:28px;height:28px;padding:5px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
 .pokemon-collection-table .actions button:hover{background:var(--soft);}
 .pokemon-collection-table .actions button.danger:hover{background:color-mix(in srgb,var(--red) 8%,var(--card));}
+.pokemon-summary-cards{grid-template-columns:repeat(5,minmax(0,1fr));}
+.pokemon-summary-cards .card{min-width:0;}
+.pokemon-total-return-card{border-color:color-mix(in srgb,var(--primary) 22%,var(--border));}
+@media(max-width:950px){.pokemon-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){.pokemon-summary-cards{grid-template-columns:1fr 1fr;gap:9px}.pokemon-summary-cards .card{padding:13px}.pokemon-summary-cards .stat-value{font-size:18px}}
 .pokemon-finance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 .pokemon-finance-grid>div{padding:11px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
 .pokemon-finance-grid span{display:block;font-size:10px;color:var(--muted);}
@@ -1514,6 +1519,7 @@ d.recurring=Array.isArray(d.recurring)?d.recurring:[];
 d.cryptoEntries=Array.isArray(d.cryptoEntries)?d.cryptoEntries:[];
   d.cryptoEntries.forEach(e=>{if(!e.assetType)e.assetType="crypto"});
   d.pokemonInitialInvestment=Number(d.pokemonInitialInvestment)||0;
+  d.pokemonCurrentValue=Number(d.pokemonCurrentValue)||0;
   d.pokemonCards=Array.isArray(d.pokemonCards)?d.pokemonCards:[];
   d.pokemonCards=d.pokemonCards.map(c=>({
     id:c.id||uid(),
@@ -1776,7 +1782,9 @@ const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonC
 const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.purchasePrice||0),0)
   : 0;
-const dashboardPokemonValue=Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardsHeldValue;
+const dashboardPokemonValue=Number(data.pokemonCurrentValue||0)>0
+  ? Number(data.pokemonCurrentValue||0)
+  : Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardsHeldValue;
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
 // als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
@@ -2794,12 +2802,17 @@ function renderCrypto(){
 
   // De historische inleg is een eenmalig startpunt. Nieuwe kaartregistraties
   // worden daar bovenop gevolgd; zo hoeft de gebruiker oude aankopen niet terug
-  // te reconstrueren.
+  // te reconstrueren. De actuele marktwaarde van de collectie kan handmatig
+  // worden bijgehouden, zodat ongerealiseerde winst/verlies zichtbaar wordt.
   const pokemonInitial=Number(data.pokemonInitialInvestment||0);
   const pokemonOpen=pokemonInitial+legacyPokemonOpen+pokemonHeldCost;
   const pokemonTotalInvested=pokemonInitial+legacyPokemonInvested+pokemonCardPurchaseTotal;
   const pokemonTotalCashouts=legacyPokemonCashouts+pokemonSalesTotal;
   const pokemonResult=legacyPokemonResult+pokemonCardRealized;
+  const pokemonCurrentValue=Number(data.pokemonCurrentValue||0);
+  const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
+  const pokemonUnrealized=pokemonCurrentValue-pokemonOpenCost;
+  const pokemonTotalReturn=pokemonResult+pokemonUnrealized;
 
   data.crypto=cryptoInvested;
 
@@ -2888,25 +2901,31 @@ function renderCrypto(){
   </div>
 
   <div id="pokemonPanel" style="display:none">
-    <div class="cards">
+    <div class="cards pokemon-summary-cards">
       <div class="card">
-        <div class="stat-label"><i data-lucide="wallet"></i>Historische inleg</div>
-        <div class="stat-value">${protectedEuro(pokemonInitial)}</div>
-        <div class="small" style="margin-top:5px">Eenmalig startbedrag</div>
+        <div class="stat-label"><i data-lucide="wallet"></i>Totale inleg</div>
+        <div class="stat-value">${protectedEuro(pokemonTotalInvested)}</div>
+        <div class="small" style="margin-top:5px">Historisch + geregistreerde aankopen</div>
       </div>
       <div class="card">
-        <div class="stat-label"><i data-lucide="layers"></i>Kaarten in bezit</div>
-        <div class="stat-value">${pokemonHeldCards.length}</div>
-        <div class="small" style="margin-top:5px">${protectedEuro(pokemonHeldCost)} aankoopwaarde</div>
+        <div class="stat-label"><i data-lucide="gem"></i>Huidige waarde</div>
+        <div class="stat-value">${protectedEuro(pokemonCurrentValue)}</div>
+        <div class="small" style="margin-top:5px">Actuele marktwaarde collectie</div>
       </div>
       <div class="card">
-        <div class="stat-label"><i data-lucide="arrow-up-right"></i>Verkocht</div>
-        <div class="stat-value">${protectedEuro(pokemonSalesTotal)}</div>
-        <div class="small" style="margin-top:5px">${pokemonSoldCards.length} kaart${pokemonSoldCards.length===1?"":"en"}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label"><i data-lucide="${pokemonResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
+        <div class="stat-label"><i data-lucide="trending-up"></i>Gerealiseerd</div>
         <div class="stat-value ${pokemonResult>=0?"positive":"negative"}">${pokemonResult>=0?"+":""}${protectedEuro(pokemonResult)}</div>
+        <div class="small" style="margin-top:5px">Winst/verlies op verkochte kaarten</div>
+      </div>
+      <div class="card">
+        <div class="stat-label"><i data-lucide="chart-no-axes-combined"></i>Ongerealiseerd</div>
+        <div class="stat-value ${pokemonUnrealized>=0?"positive":"negative"}">${pokemonUnrealized>=0?"+":""}${protectedEuro(pokemonUnrealized)}</div>
+        <div class="small" style="margin-top:5px">Waarde minus openstaande aankoopkosten</div>
+      </div>
+      <div class="card pokemon-total-return-card">
+        <div class="stat-label"><i data-lucide="badge-euro"></i>Totaal rendement</div>
+        <div class="stat-value ${pokemonTotalReturn>=0?"positive":"negative"}">${pokemonTotalReturn>=0?"+":""}${protectedEuro(pokemonTotalReturn)}</div>
+        <div class="small" style="margin-top:5px">Gerealiseerd + ongerealiseerd</div>
       </div>
     </div>
 
@@ -2918,9 +2937,14 @@ function renderCrypto(){
           <label>Mijn historische inleg (€)</label>
           <input id="pokemonInitialInvestment" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonInitial||""}" placeholder="Bijv. 2.000">
         </div>
+        <div class="field">
+          <label>Huidige marktwaarde collectie (€)</label>
+          <input id="pokemonCurrentValue" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonCurrentValue||""}" placeholder="Bijv. 2.750">
+        </div>
       </div>
+      <div class="small" style="margin-top:10px">Vul hier de actuele verkoop-/marktwaarde van je volledige Pokémon-collectie in. Hiermee wordt de ongerealiseerde winst berekend.</div>
       <div class="form-actions">
-        <button class="btn primary" id="savePokemonInitialInvestment"><i data-lucide="save"></i>Inleg opslaan</button>
+        <button class="btn primary" id="savePokemonInitialInvestment"><i data-lucide="save"></i>Overzicht opslaan</button>
       </div>
     </div>
 
@@ -3077,12 +3101,15 @@ function renderCrypto(){
   };
 
   $("savePokemonInitialInvestment").onclick=()=>{
-    const raw=String($("pokemonInitialInvestment").value||"").replace(",",".").trim();
-    const n=raw===""?0:Number(raw);
-    if(!Number.isFinite(n)||n<0){notify("Vul een geldig bedrag in.");return}
-    data.pokemonInitialInvestment=n;
+    const initialRaw=String($("pokemonInitialInvestment").value||"").replace(",",".").trim();
+    const currentRaw=String($("pokemonCurrentValue").value||"").replace(",",".").trim();
+    const initial=initialRaw===""?0:Number(initialRaw);
+    const current=currentRaw===""?0:Number(currentRaw);
+    if(!Number.isFinite(initial)||initial<0||!Number.isFinite(current)||current<0){notify("Vul geldige bedragen in.");return}
+    data.pokemonInitialInvestment=initial;
+    data.pokemonCurrentValue=current;
     saveAndRender();
-    notify("Historische Pokémon-inleg opgeslagen.");
+    notify("Pokémon-overzicht opgeslagen.");
   };
 
   $("pokemonCardCondition").onchange=updatePokemonPsaFields;
