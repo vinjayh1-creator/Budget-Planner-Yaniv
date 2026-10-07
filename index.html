@@ -1786,8 +1786,9 @@ const dashboardPokemonSold=Array.isArray(data.pokemonCards)
 const dashboardPokemonCashouts=dashboardPokemonSold;
 const dashboardPokemonResult=dashboardPokemonCashouts-dashboardPokemonInvested;
 const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonCashouts);
-// Pokémon-waarde op het dashboard = historische inleg + aankoopprijs van kaarten die nog in bezit zijn.
-// Verkochte kaarten tellen niet meer mee in de huidige waarde.
+// De actuele Pokémon-waarde op het dashboard is losgekoppeld van de historische inleg.
+// De eerder opgeslagen huidige waarde van de oude collectie blijft behouden; nieuwe kaarten
+// worden toegevoegd op basis van hun eigen huidige waarde. Verkochte kaarten tellen niet mee.
 const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.purchasePrice||0),0)
   : 0;
@@ -1796,7 +1797,12 @@ const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
 const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
   : 0;
-const dashboardPokemonValue=dashboardPokemonInvested;
+const dashboardPokemonLegacyCurrentValue=Number(data.pokemonCurrentValue||0);
+const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
+  ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
+  : 0;
+// Dashboard: actuele Pokémon-waarde = de eerder opgeslagen huidige collectie-waarde + actuele waarde van nieuwe kaarten.
+const dashboardPokemonValue=dashboardPokemonLegacyCurrentValue+dashboardPokemonCardCurrentValue;
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
 // als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
@@ -2825,10 +2831,11 @@ function renderCrypto(){
   const pokemonTotalInvested=pokemonInitial+legacyPokemonInvested+pokemonCardPurchaseTotal;
   const pokemonTotalCashouts=legacyPokemonCashouts+pokemonSalesTotal;
   const pokemonResult=legacyPokemonResult+pokemonCardRealized;
-  // Huidige waarde = historische inleg + de actuele waarde van alle kaarten
-  // die momenteel in de collectie zitten. Dit wordt bij iedere render opnieuw berekend.
+  // Huidige waarde = de eerder opgeslagen huidige waarde van de bestaande collectie
+  // + de actuele waarde van nieuw geregistreerde kaarten die nog in bezit zijn.
+  // De historische inleg staat hier bewust los van.
   const pokemonCardCurrentValue=pokemonHeldCards.reduce((sum,c)=>sum+Number(c.currentValue||0),0);
-  const pokemonCurrentValue=pokemonInitial+pokemonCardCurrentValue;
+  const pokemonCurrentValue=Number(data.pokemonCurrentValue||0)+pokemonCardCurrentValue;
   const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
   const pokemonUnrealized=pokemonCurrentValue-pokemonOpenCost;
   const pokemonTotalReturn=pokemonResult+pokemonUnrealized;
@@ -3015,7 +3022,7 @@ function renderCrypto(){
         <span>Mijn Pokémon collectie</span>
         <span class="small">${pokemonCards.length} geregistreerd</span>
       </div>
-      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> wordt automatisch berekend als historische inleg plus de actuele waarde van de kaarten die momenteel in je collectie zitten.</div>
+      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> bestaat uit de opgeslagen huidige waarde van je bestaande collectie plus de actuele waarde van nieuw toegevoegde kaarten.</div>
       ${pokemonCards.length?`
       <div class="table-wrap pokemon-collection-table-wrap">
         <table class="table pokemon-collection-table">
