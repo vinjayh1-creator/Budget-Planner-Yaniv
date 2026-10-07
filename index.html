@@ -1531,6 +1531,7 @@ d.cryptoEntries=Array.isArray(d.cryptoEntries)?d.cryptoEntries:[];
     psaCert:String(c.psaCert||""),
     language:c.language==="japanese"?"japanese":"english",
     purchasePrice:Number(c.purchasePrice)||0,
+    currentValue:Number(c.currentValue)||0,
     purchaseDate:String(c.purchaseDate||today()),
     status:c.status==="sold"?"sold":"held",
     salePrice:Number(c.salePrice)||0,
@@ -1782,9 +1783,14 @@ const dashboardPokemonOpen=Math.max(0,dashboardPokemonInvested-dashboardPokemonC
 const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.purchasePrice||0),0)
   : 0;
-const dashboardPokemonValue=Number(data.pokemonCurrentValue||0)>0
-  ? Number(data.pokemonCurrentValue||0)
-  : Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardsHeldValue;
+const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
+  ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
+  : 0;
+const dashboardPokemonValue=Array.isArray(data.pokemonCards)&&data.pokemonCards.length>0
+  ? dashboardPokemonCardCurrentValue
+  : (Number(data.pokemonCurrentValue||0)>0
+    ? Number(data.pokemonCurrentValue||0)
+    : Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardsHeldValue);
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
 // als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
@@ -2809,7 +2815,10 @@ function renderCrypto(){
   const pokemonTotalInvested=pokemonInitial+legacyPokemonInvested+pokemonCardPurchaseTotal;
   const pokemonTotalCashouts=legacyPokemonCashouts+pokemonSalesTotal;
   const pokemonResult=legacyPokemonResult+pokemonCardRealized;
-  const pokemonCurrentValue=Number(data.pokemonCurrentValue||0);
+  const pokemonCardCurrentValue=pokemonHeldCards.reduce((sum,c)=>sum+Number(c.currentValue||0),0);
+  const pokemonCurrentValue=pokemonCards.length>0
+    ? pokemonCardCurrentValue
+    : Number(data.pokemonCurrentValue||0);
   const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
   const pokemonUnrealized=pokemonCurrentValue-pokemonOpenCost;
   const pokemonTotalReturn=pokemonResult+pokemonUnrealized;
@@ -2977,6 +2986,10 @@ function renderCrypto(){
             <input id="pokemonCardPurchasePrice" required type="number" min="0" step=".01" inputmode="decimal" placeholder="Bijv. 250">
           </div>
           <div class="field">
+            <label>Huidige waarde (€)</label>
+            <input id="pokemonCardCurrentValue" required type="number" min="0" step=".01" inputmode="decimal" placeholder="Bijv. 300">
+          </div>
+          <div class="field">
             <label>Aankoopdatum</label>
             <input id="pokemonCardPurchaseDate" type="date" value="${today()}">
           </div>
@@ -2992,22 +3005,13 @@ function renderCrypto(){
         <span>Mijn Pokémon collectie</span>
         <span class="small">${pokemonCards.length} geregistreerd</span>
       </div>
-      <div class="form-grid" style="margin-top:12px;align-items:end;">
-        <div class="field">
-          <label>Huidige waarde collectie (€)</label>
-          <input id="pokemonCurrentValue" type="number" min="0" step=".01" inputmode="decimal" value="${pokemonCurrentValue||""}" placeholder="Bijv. 2.750">
-        </div>
-        <div class="form-actions" style="margin-top:0;">
-          <button class="btn primary" id="savePokemonCurrentValue"><i data-lucide="save"></i>Waarde opslaan</button>
-        </div>
-      </div>
-      <div class="small" style="margin-top:8px">Vul zelf de actuele waarde van je volledige Pokémon-collectie in. Deze waarde wordt direct gebruikt voor <strong>Huidige waarde</strong> en je rendementsberekening.</div>
+      <div class="small" style="margin-top:8px">De <strong>Huidige waarde</strong> bovenaan wordt automatisch berekend op basis van de actuele waarde van alle kaarten die nog in bezit zijn.</div>
       ${pokemonCards.length?`
       <div class="table-wrap pokemon-collection-table-wrap">
         <table class="table pokemon-collection-table">
           <thead>
             <tr>
-              <th>Kaart</th><th>Set</th><th>Taal</th><th>Type</th><th>Inleg</th><th>Status</th><th>Verkoop</th><th></th>
+              <th>Kaart</th><th>Set</th><th>Taal</th><th>Type</th><th>Inleg</th><th>Huidige waarde</th><th>Status</th><th>Verkoop</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -3022,9 +3026,11 @@ function renderCrypto(){
                 <td>${c.language==="japanese"?"Japans":"Engels"}</td>
                 <td><strong>${c.condition==="psa"?(psaLabel||"PSA"):"Raw"}</strong>${certLabel?`<div class="pokemon-type-detail">Cert. ${esc(c.psaCert)}</div>`:""}</td>
                 <td class="negative">${protectedEuro(c.purchasePrice)}</td>
+                <td>${c.status==="sold"?"—":protectedEuro(c.currentValue)}</td>
                 <td><span class="badge ${c.status==="sold"?"pokemon-sold-badge":"pokemon-held-badge"}">${statusLabel}</span></td>
                 <td class="${c.status==="sold"?(c.salePrice-c.purchasePrice>=0?"positive":"negative"):""}">${saleLabel}</td>
                 <td><div class="actions">
+                  ${c.status!=="sold"?`<button data-pokemon-value="${esc(c.id)}" title="Huidige waarde aanpassen"><i data-lucide="pencil"></i></button>`:""}
                   <button data-pokemon-sold="${esc(c.id)}" title="${c.status==="sold"?"Kaart weer op in bezit zetten":"Als verkocht markeren"}"><i data-lucide="${c.status==="sold"?"rotate-ccw":"tag"}"></i></button>
                   <button data-pokemon-delete="${esc(c.id)}" class="danger" title="Kaart verwijderen"><i data-lucide="trash-2"></i></button>
                 </div></td>
@@ -3097,23 +3103,11 @@ function renderCrypto(){
 
   $("savePokemonInitialInvestment").onclick=()=>{
     const initialRaw=String($("pokemonInitialInvestment").value||"").replace(",",".").trim();
-    const currentRaw=String($("pokemonCurrentValue").value||"").replace(",",".").trim();
     const initial=initialRaw===""?0:Number(initialRaw);
-    const current=currentRaw===""?0:Number(currentRaw);
-    if(!Number.isFinite(initial)||initial<0||!Number.isFinite(current)||current<0){notify("Vul geldige bedragen in.");return}
+    if(!Number.isFinite(initial)||initial<0){notify("Vul een geldige historische inleg in.");return}
     data.pokemonInitialInvestment=initial;
-    data.pokemonCurrentValue=current;
     saveAndRender();
-    notify("Pokémon-overzicht opgeslagen.");
-  };
-
-  $("savePokemonCurrentValue").onclick=()=>{
-    const raw=String($("pokemonCurrentValue").value||"").replace(",",".").trim();
-    const current=raw===""?0:Number(raw);
-    if(!Number.isFinite(current)||current<0){notify("Vul een geldige waarde in.");return}
-    data.pokemonCurrentValue=current;
-    saveAndRender();
-    notify("Huidige Pokémon-waarde opgeslagen.");
+    notify("Historische Pokémon-inleg opgeslagen.");
   };
 
   $("pokemonCardCondition").onchange=updatePokemonPsaFields;
@@ -3122,8 +3116,10 @@ function renderCrypto(){
     e.preventDefault();
     const name=$("pokemonCardName").value.trim();
     const purchasePrice=Number($("pokemonCardPurchasePrice").value);
+    const currentValue=Number($("pokemonCardCurrentValue").value);
     if(!name){notify("Vul de naam van de kaart in.");return}
     if(!Number.isFinite(purchasePrice)||purchasePrice<0){notify("Vul een geldige aankoopprijs in.");return}
+    if(!Number.isFinite(currentValue)||currentValue<0){notify("Vul een geldige huidige waarde in.");return}
 
     const condition=$("pokemonCardCondition").value;
     const card={
@@ -3136,6 +3132,7 @@ function renderCrypto(){
       psaCert:condition==="psa"?$("pokemonCardCert").value.trim():"",
       language:$("pokemonCardLanguage").value,
       purchasePrice,
+      currentValue,
       purchaseDate:$("pokemonCardPurchaseDate").value||today(),
       status:"held",
       salePrice:0,
@@ -3144,6 +3141,18 @@ function renderCrypto(){
     data.pokemonCards.push(card);
     saveAndRender();
   };
+
+  document.querySelectorAll("[data-pokemon-value]").forEach(btn=>btn.onclick=()=>{
+    const id=btn.dataset.pokemonValue;
+    const card=data.pokemonCards.find(c=>c.id===id);
+    if(!card)return;
+    const entered=prompt(`Huidige waarde voor ${card.name||"deze kaart"}: (€)`,Number(card.currentValue||0).toFixed(2));
+    if(entered===null)return;
+    const value=Number(String(entered).replace(",",".").trim());
+    if(!Number.isFinite(value)||value<0){notify("Vul een geldige huidige waarde in.");return}
+    card.currentValue=value;
+    saveAndRender();
+  });
 
   document.querySelectorAll("[data-pokemon-sold]").forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.pokemonSold;
