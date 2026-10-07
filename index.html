@@ -1786,11 +1786,7 @@ const dashboardPokemonCardsHeldValue=Array.isArray(data.pokemonCards)
 const dashboardPokemonCardCurrentValue=Array.isArray(data.pokemonCards)
   ? data.pokemonCards.filter(c=>c.status!=="sold").reduce((s,c)=>s+Number(c.currentValue||0),0)
   : 0;
-const dashboardPokemonValue=Array.isArray(data.pokemonCards)&&data.pokemonCards.length>0
-  ? dashboardPokemonCardCurrentValue
-  : (Number(data.pokemonCurrentValue||0)>0
-    ? Number(data.pokemonCurrentValue||0)
-    : Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardsHeldValue);
+const dashboardPokemonValue=Number(data.pokemonInitialInvestment||0)+dashboardPokemonCardCurrentValue;
 // Laatste transacties worden hieronder samengesteld uit zowel gewone rekeningtransacties
 // als DealPlugNL-mutaties. Daardoor verschijnt een verkoop ook direct op het dashboard.
 
@@ -2820,7 +2816,7 @@ function renderCrypto(){
   // De per-kaart "Huidige waarde" blijft apart beschikbaar voor waardering
   // per kaart, maar bepaalt niet het dashboardbedrag.
   const pokemonCardCurrentValue=pokemonHeldCards.reduce((sum,c)=>sum+Number(c.currentValue||0),0);
-  const pokemonCurrentValue=pokemonInitial+pokemonHeldCost;
+  const pokemonCurrentValue=pokemonInitial+pokemonCardCurrentValue;
   const pokemonOpenCost=Math.max(0,pokemonTotalInvested-pokemonSoldCost-legacyPokemonCashouts);
   const pokemonUnrealized=pokemonCurrentValue-pokemonOpenCost;
   const pokemonTotalReturn=pokemonResult+pokemonUnrealized;
