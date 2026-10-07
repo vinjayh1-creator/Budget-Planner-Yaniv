@@ -1492,7 +1492,7 @@ const categories=["Wonen","Boodschappen","Auto","Benzine","Vervoer","Abonnemente
 const quickExpenses=[["Boodschappen","shopping-cart"],["Tanken","fuel"],["Uit eten","utensils"],["Abonnement","credit-card"],["Kleding","shirt"],["Vervoer","car"],["Entertainment","gamepad-2"],["Vakantie","plane"],["Gezondheid","heart-pulse"],["Overig","more-horizontal"],["Crypto","bitcoin"]];
 
 function freshData(){
-return {theme:"light",cryptoEnabled:true,crypto:0,cryptoEntries:[],pokemonInitialInvestment:0,pokemonCards:[],accounts:structuredClone(DEFAULT_ACCOUNTS),transactions:[],budgets:[],goals:[],recurring:[],weeklySalary:{enabled:false,amount:0,accountId:"",description:"Wekelijks loon"},dealplug:{opening:0,entries:[]},processedRecurring:{},accountSnapshots:{}};
+return {theme:"light",cryptoEnabled:true,crypto:0,cryptoEntries:[],pokemonInitialInvestment:0,pokemonInitialInvestmentSet:false,pokemonCards:[],accounts:structuredClone(DEFAULT_ACCOUNTS),transactions:[],budgets:[],goals:[],recurring:[],weeklySalary:{enabled:false,amount:0,accountId:"",description:"Wekelijks loon"},dealplug:{opening:0,entries:[]},processedRecurring:{},accountSnapshots:{}};
 }
 function loadData(){
 let raw=null;
@@ -1518,7 +1518,10 @@ d.goals=Array.isArray(d.goals)?d.goals:[];
 d.recurring=Array.isArray(d.recurring)?d.recurring:[];
 d.cryptoEntries=Array.isArray(d.cryptoEntries)?d.cryptoEntries:[];
   d.cryptoEntries.forEach(e=>{if(!e.assetType)e.assetType="crypto"});
-  d.pokemonInitialInvestment=Number(d.pokemonInitialInvestment)||0;
+  // Historische Pokémon-inleg is pas actief nadat de gebruiker deze zelf heeft opgeslagen.
+  // Bestaande oude standaardwaarden (zoals €1.200) worden daardoor niet automatisch meegenomen.
+  d.pokemonInitialInvestmentSet=d.pokemonInitialInvestmentSet===true;
+  d.pokemonInitialInvestment=d.pokemonInitialInvestmentSet?(Number(d.pokemonInitialInvestment)||0):0;
   d.pokemonCurrentValue=Number(d.pokemonCurrentValue)||0;
   d.pokemonCards=Array.isArray(d.pokemonCards)?d.pokemonCards:[];
   d.pokemonCards=d.pokemonCards.map(c=>({
@@ -3113,6 +3116,7 @@ function renderCrypto(){
     const initial=initialRaw===""?0:Number(initialRaw);
     if(!Number.isFinite(initial)||initial<0){notify("Vul een geldige historische inleg in.");return}
     data.pokemonInitialInvestment=initial;
+    data.pokemonInitialInvestmentSet=true;
     saveAndRender();
     notify("Historische Pokémon-inleg opgeslagen.");
   };
